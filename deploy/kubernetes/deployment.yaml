@@ -1,0 +1,218 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: hydra-route-system
+  labels:
+    name: hydra-route-system
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: hydra-route-config
+  namespace: hydra-route-system
+data:
+  config.yaml: |
+    metrics:
+      collection_interval: 30s
+      nginx_metrics_url: "http://nginx-ingress-controller.ingress-nginx.svc.cluster.local:10254"
+      prometheus_url: "http://prometheus.monitoring.svc.cluster.local:9090"
+      enable_custom_metrics: true
+      retention_period: 24h
+      request_rate_window: 5m
+      bandwidth_monitoring:
+        enable_network_bandwidth: true
+        enable_io_bandwidth: true
+        measurement_interval: 10s
+        network_interface: ""
+
+    scaling:
+      enable_ai_scaling: true
+      min_replicas: 1
+      max_replicas: 20
+      evaluation_interval: 30s
+      
+      scale_up_thresholds:
+        cpu_utilization: 70.0
+        memory_utilization: 75.0
+        request_rate: 100.0
+        network_bandwidth: 80.0
+        io_bandwidth: 50.0
+        response_time: 1000.0
+        error_rate: 5.0
+      
+      scale_down_thresholds:
+        cpu_utilization: 30.0
+        memory_utilization: 40.0
+        request_rate: 20.0
+        network_bandwidth: 20.0
+        io_bandwidth: 10.0
+        response_time: 200.0
+        error_rate: 1.0
+      
+      ai_model:
+        model_type: "ensemble"
+        learning_rate: 0.01
+        historical_window: 24h
+        enable_online_learning: true
+        retrain_interval: 2h
+        
+        feature_weights:
+          cpu_utilization: 0.25
+          memory_utilization: 0.20
+          request_rate: 0.30
+          network_bandwidth: 0.10
+          io_bandwidth: 0.05
+          response_time: 0.08
+          error_rate: 0.02
+      
+      cooldown:
+        scale_up_cooldown: 3m
+        scale_down_cooldown: 5m
+      
+      prediction:
+        enable_predictive_scaling: true
+        prediction_horizon: 10m
+        confidence_threshold: 0.8
+        enable_seasonality_detection: true
+
+    general:
+      log_level: "info"
+      ingress_class: "nginx"
+      watch_namespaces: []
+      dry_run: false
+      
+      leader_election:
+        enabled: true
+        lease_duration: 15s
+        renew_deadline: 10s
+        retry_period: 2s
+      
+      health_check:
+        interval: 30s
+        timeout: 5s
+        failure_threshold: 3
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hydra-route-controller
+  namespace: hydra-route-system
+  labels:
+    app: hydra-route-controller
+    control-plane: hydra-route-controller
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: hydra-route-controller
+      control-plane: hydra-route-controller
+  template:
+    metadata:
+      labels:
+        app: hydra-route-controller
+        control-plane: hydra-route-controller
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8080"
+        prometheus.io/path: "/metrics"
+    spec:
+      serviceAccountName: hydra-route-controller
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1001
+        fsGroup: 1001
+      containers:
+      - name: controller
+        image: hydraai/hydra-route:latest
+        imagePullPolicy: IfNotPresent
+        args:
+        - --config=/etc/hydra-route/config.yaml
+        - --metrics-bind-address=:8080
+        - --health-probe-bind-address=:8081
+        - --leader-elect=true
+        - --log-level=info
+        ports:
+        - name: metrics
+          containerPort: 8080
+          protocol: TCP
+        - name: health
+          containerPort: 8081
+          protocol: TCP
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: health
+          initialDelaySeconds: 15
+          periodSeconds: 20
+          timeoutSeconds: 5
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /readyz
+            port: health
+          initialDelaySeconds: 5
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        resources:
+          limits:
+            cpu: 500m
+            memory: 512Mi
+          requests:
+            cpu: 100m
+            memory: 128Mi
+        volumeMounts:
+        - name: config
+          mountPath: /etc/hydra-route
+          readOnly: true
+        env:
+        - name: NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop:
+            - ALL
+      volumes:
+      - name: config
+        configMap:
+          name: hydra-route-config
+      terminationGracePeriodSeconds: 10
+      nodeSelector:
+        kubernetes.io/os: linux
+      tolerations:
+      - key: "node-role.kubernetes.io/master"
+        operator: "Exists"
+        effect: "NoSchedule"
+      - key: "node-role.kubernetes.io/control-plane"
+        operator: "Exists"
+        effect: "NoSchedule"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: hydra-route-controller-metrics
+  namespace: hydra-route-system
+  labels:
+    app: hydra-route-controller
+    control-plane: hydra-route-controller
+spec:
+  selector:
+    app: hydra-route-controller
+    control-plane: hydra-route-controller
+  ports:
+  - name: metrics
+    port: 8080
+    targetPort: metrics
+    protocol: TCP
+  - name: health
+    port: 8081
+    targetPort: health
+    protocol: TCP 
