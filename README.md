@@ -1,16 +1,26 @@
 # HydraRoute - Intelligent AI-Based Kubernetes Pod Scaling
 
+> **⚠️ BETA VERSION - UNDER ACTIVE DEVELOPMENT** ⚠️
+> 
+> This project is currently in **beta testing** and under active development. Not all features are fully implemented or tested in production environments. We welcome feedback, bug reports, and contributions from the community.
+> 
+> **Please note:**
+> - Some AI model implementations are simplified and may not work optimally in all scenarios
+> - Metrics collection from nginx ingress controllers requires proper endpoint configuration
+> - The system bandwidth monitoring features are currently simulated
+> - Production deployment should be done with caution and thorough testing
+
 HydraRoute is a Kubernetes plugin that provides intelligent, AI-based automatic scaling for pods behind nginx ingress controllers. It complements existing ingress setups by analyzing multiple metrics including CPU/memory utilization, request rates, I/O bandwidth, and network bandwidth to make informed scaling decisions.
 
 ## 🚀 Features
 
-- **AI-Powered Scaling**: Uses machine learning algorithms (linear regression, neural networks, ensemble methods) for intelligent scaling decisions
-- **Multi-Metric Analysis**: Monitors CPU, memory, request rate, network bandwidth, I/O bandwidth, response times, and error rates
-- **Nginx Ingress Integration**: Seamlessly works with existing nginx ingress controllers
-- **Predictive Scaling**: Anticipates traffic patterns and scales proactively
+- **AI-Powered Scaling**: Uses machine learning algorithms (linear regression, neural networks, ensemble methods) for intelligent scaling decisions *(Beta - Simplified implementations)*
+- **Multi-Metric Analysis**: Monitors CPU, memory, request rate, network bandwidth, I/O bandwidth, response times, and error rates *(Beta - Some metrics simulated)*
+- **Nginx Ingress Integration**: Seamlessly works with existing nginx ingress controllers *(Beta - Requires proper metrics endpoint configuration)*
+- **Predictive Scaling**: Anticipates traffic patterns and scales proactively *(Beta - Basic implementation)*
 - **Cooldown Management**: Prevents scaling flapping with configurable cooldown periods
 - **Dry Run Mode**: Test scaling decisions without actually modifying deployments
-- **Online Learning**: Continuously improves AI models based on historical performance
+- **Online Learning**: Continuously improves AI models based on historical performance *(Beta - Limited training data handling)*
 - **Cloud Native**: Built specifically for Kubernetes with proper RBAC and security
 
 ## 🏗️ Architecture
@@ -41,9 +51,11 @@ HydraRoute is a Kubernetes plugin that provides intelligent, AI-based automatic 
 ### Prerequisites
 
 - Kubernetes cluster (v1.20+)
-- Nginx Ingress Controller
+- Nginx Ingress Controller *(with metrics endpoint enabled)*
 - Metrics Server (for pod metrics)
 - RBAC enabled
+
+> **⚠️ Beta Note:** The nginx ingress controller must have metrics endpoint enabled and accessible. The default configuration assumes the metrics endpoint is available at `http://nginx-ingress-controller.ingress-nginx.svc.cluster.local:10254`.
 
 ### Quick Install
 
@@ -80,6 +92,8 @@ kubectl get pods -n hydra-route-system
    # Edit deploy/kubernetes/deployment.yaml to use your image
    kubectl apply -f deploy/kubernetes/
    ```
+
+> **⚠️ Beta Testing Recommendation:** Start with dry-run mode enabled to test the system without making actual scaling changes. Monitor the logs and metrics to ensure proper operation before enabling live scaling.
 
 ## ⚙️ Configuration
 
@@ -341,16 +355,30 @@ go test ./test/load/...
    - Verify nginx ingress controller metrics endpoint
    - Check metrics server installation
    - Confirm RBAC permissions
+   - **Beta Issue:** Some metrics endpoints may not be properly configured
 
 2. **Scaling decisions not applied**
    - Check dry-run mode setting
    - Verify deployment RBAC permissions
    - Review cooldown periods
+   - **Beta Issue:** AI models may not make optimal decisions initially
 
 3. **AI model not learning**
    - Ensure sufficient training data (>100 samples)
    - Check online learning configuration
    - Review feature weights
+   - **Beta Issue:** Training data collection and model retraining are simplified
+
+### Beta-Specific Issues
+
+4. **Simulated metrics showing unrealistic values**
+   - This is expected in beta - system bandwidth metrics are currently simulated
+   - Real implementation will require actual system monitoring integration
+
+5. **AI predictions seem inaccurate**
+   - Beta models use simplified algorithms
+   - Feature engineering is basic and may need tuning for your specific workload
+   - Consider adjusting feature weights in configuration
 
 ### Debug Commands
 
@@ -372,12 +400,31 @@ kubectl auth can-i get deployments --as=system:serviceaccount:hydra-route-system
 
 We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) for details.
 
+### Beta Testing Feedback
+
+As this project is in beta, we especially value:
+
+- **Bug Reports**: Please report any issues you encounter
+- **Feature Requests**: Let us know what features would be most valuable
+- **Performance Feedback**: Share your experience with scaling decisions
+- **Configuration Suggestions**: Help improve default settings
+- **Documentation Improvements**: Suggest better explanations or examples
+
 ### Development Workflow
 
 1. Fork the repository
 2. Create a feature branch
 3. Make changes with tests
 4. Submit a pull request
+
+### Beta Testing Checklist
+
+Before reporting issues, please check:
+- [ ] Running with dry-run mode first
+- [ ] Nginx ingress metrics endpoint is accessible
+- [ ] Kubernetes metrics server is installed
+- [ ] RBAC permissions are properly configured
+- [ ] Configuration file is valid YAML
 
 ## 📄 License
 
@@ -386,19 +433,51 @@ This project is licensed under the Apache License 2.0 - see the [LICENSE](LICENS
 ## 🆘 Support
 
 - **Documentation**: [Wiki](https://github.com/hydraai/hydra-route/wiki)
-- **Issues**: [GitHub Issues](https://github.com/hydraai/hydra-route/issues)
+- **Issues**: [GitHub Issues](https://github.com/hydraai/hydra-route/issues) *(Please use "beta" label for beta-related issues)*
 - **Discussions**: [GitHub Discussions](https://github.com/hydraai/hydra-route/discussions)
 - **Slack**: [#hydra-route](https://kubernetes.slack.com/channels/hydra-route)
 
+> **💡 Beta Support:** For beta testing issues, please include:
+> - Your Kubernetes version
+> - Nginx ingress controller version
+> - Configuration file (with sensitive data redacted)
+> - Logs from the hydra-route controller
+> - Description of expected vs actual behavior
+
 ## 🗺️ Roadmap
 
+### Beta Phase (Current)
+- [x] Basic AI scaling engine
+- [x] Nginx ingress integration
+- [x] Metrics collection framework
+- [x] Kubernetes controller
+- [ ] Real system bandwidth monitoring *(Currently simulated)*
+- [ ] Advanced AI model training *(Currently simplified)*
+- [ ] Production-ready error handling
+
+### Future Releases
 - [ ] Support for Istio ingress gateway
 - [ ] Custom Resource Definitions (CRDs) for scaling policies
 - [ ] Multi-cluster scaling coordination
 - [ ] Advanced anomaly detection
 - [ ] Web dashboard for monitoring and configuration
 - [ ] Integration with GitOps workflows
+- [ ] Support for multiple ingress controllers
+- [ ] Advanced predictive scaling algorithms
 
 ---
 
-**HydraRoute** - Intelligent scaling for the cloud-native era. 🌊 
+**HydraRoute** - Intelligent scaling for the cloud-native era. 🌊
+
+---
+
+> **🎯 Beta Testing Call to Action**
+> 
+> We're actively seeking beta testers to help improve HydraRoute! If you're interested in testing intelligent Kubernetes scaling, please:
+> 
+> 1. **Try it out** in a non-production environment
+> 2. **Share your feedback** via GitHub Issues or Discussions
+> 3. **Report bugs** with detailed information
+> 4. **Suggest improvements** for features and configuration
+> 
+> Your feedback will help shape the future of intelligent Kubernetes scaling! 🚀 
